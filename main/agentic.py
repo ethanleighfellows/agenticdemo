@@ -158,15 +158,15 @@ HTML_TEMPLATE = """
         <div class="card animate__animated animate__fadeInUp">
           <div class="card-body">
             <h5 class="card-title">What Our Agents Did</h5>
-            <p><strong>Agent 1 (Customization):</strong> Validated your selections (size, color, design style, and custom text) to ensure they meet our requirements.</p>
+            <p><strong>Agent A (Customization):</strong> Validated your selections (size, color, design style, and custom text) to ensure they meet our requirements.</p>
           </div>
         </div>
-        <!-- 3D Preview: Now placed above Agent 2 explanation -->
+        <!-- 3D Preview: Now placed above Agent B explanation -->
         <div id="shirt-preview" class="animate__animated animate__fadeInUp mt-3"></div>
-        <!-- Agent 2 Explanation and Pricing -->
+        <!-- Agent B Explanation and Pricing -->
         <div class="card animate__animated animate__fadeInUp mt-3">
           <div class="card-body">
-            <h5 class="card-title">Agent 2 (Pricing) & Final Price</h5>
+            <h5 class="card-title">Agent B (Pricing) & Final Price</h5>
             <p>Computed a dynamic price based on your selections (base price, size multiplier, design cost, and additional text cost).</p>
             <div class="alert alert-success" role="alert">
               Final price for Order {{ order.order_id }}: <strong>${{ result.estimated_cost | round(2) }}</strong>
