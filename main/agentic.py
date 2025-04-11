@@ -101,7 +101,7 @@ HTML_TEMPLATE = """
         <p><strong>Step 2:</strong> After submission...</p>
         <ul>
           <li>Agent A: Will provide a 3D preview of the customized shirt (updated with your chosen color, text, design style, and size).</li>
-          <li><strong>Agent B:</strong> Agent B: Will provide the final price of your customized shirt.</li>
+          <li> Agent B: Will provide the final price of your customized shirt.</li>
         </ul>
       </div>
       {% if not result %}
