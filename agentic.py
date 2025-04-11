@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-LangChain T-Shirt Customization and Dynamic Pricing Service with SuperDad's T-Shirts Themed UI
------------------------------------------------------------------------------------------------
-This service processes T-Shirt orders in two phases:
-  1. Customization: Validates and applies customer selections.
-  2. Dynamic Pricing: Computes an estimated cost using configurable, dynamic factors.
+LangChain T-Shirt Customization and Dynamic Pricing Service with 3D Preview and Auto-Generated Order IDs
+-----------------------------------------------------------------------------------------------------------
+This demo processes custom T-Shirt orders via two agents:
+  1. Customization – validates and applies your design options.
+  2. Dynamic Pricing – computes a dynamic estimated cost.
 
-The web UI is designed for night mode with high contrast. It features:
-  - The store name "SuperDad's T-Shirts"
-  - A full‑screen hero section with a background image from Dreamstime (parent superhero silhouette).
-  - Rounded edges, semibold Montserrat typography, and a gradient gold accent.
-  - Smooth animations via Animate.css.
-  - All text is forced to white for maximum contrast.
+The UI, branded as "SuperDad's T-Shirts," is built in high-contrast night mode with gradient gold accents,
+rounded edges, and semibold Montserrat typography. The hero section displays a new background image.
+After hitting "Submit Order," a live 3D preview appears, updating dynamically based on:
+  - Chosen shirt color.
+  - Custom text to be printed.
+  - Design style (if "Vintage" is selected, a curved profile is simulated).
+  - Shirt size (S, M, L, XL) affecting the model’s scale.
+  
+All 3D elements are built procedurally directly in the browser using Three.js.
 """
 
 import asyncio
@@ -29,9 +32,12 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
+# Global order counter to auto-generate Order IDs.
+order_count = 0
+
 def update_loading_bar(order_id: int, current_step: int, total_steps: int) -> None:
     """
-    Display a dynamic text-based loading bar for the order processing.
+    Displays a text-based loading bar in the terminal for the order processing.
     """
     percent = (current_step / total_steps) * 100
     bar_length = 20
@@ -45,7 +51,8 @@ def update_loading_bar(order_id: int, current_step: int, total_steps: int) -> No
 class TShirtOrderChain(Chain):
     """
     A LangChain chain that processes T-Shirt orders in two sequential steps:
-    Customization and Pricing.
+      1. Customization – validates and applies your design options.
+      2. Pricing – computes a dynamic estimated cost.
     """
     @property
     def input_keys(self) -> List[str]:
@@ -64,12 +71,12 @@ class TShirtOrderChain(Chain):
         print(f"\n--- Processing Order {order['order_id']} for {order['customer_name']} ---")
         update_loading_bar(order["order_id"], current_step, total_steps)
 
-        # Customization step.
+        # Customization: Validate and apply design options.
         order = await self.customize_order(order)
         current_step += 1
         update_loading_bar(order["order_id"], current_step, total_steps)
 
-        # Pricing step.
+        # Pricing: Compute estimated cost.
         order = await self.price_order(order)
         current_step += 1
         update_loading_bar(order["order_id"], current_step, total_steps)
@@ -142,7 +149,7 @@ class TShirtOrderChain(Chain):
 app = Flask(__name__)
 tshirt_chain = TShirtOrderChain()
 
-# HTML template with "SuperDad's T-Shirts" night mode theme, gradient gold accents, and all text forced to white.
+# HTML template with updated UI instructions and dynamic 3D preview.
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="en">
@@ -166,8 +173,6 @@ HTML_TEMPLATE = """
           color: #fff !important;
       }
       .hero {
-          /* Using the provided Dreamstime URL as the background.
-             Note: This is a landing page URL; for production, replace with a direct image URL */
           background: url('https://thumbs.dreamstime.com/b/father-son-playing-superhero-sunset-time-people-having-fun-outdoors-concept-friendly-family-97721110.jpg') no-repeat center center;
           background-size: cover;
           height: 60vh;
@@ -194,6 +199,12 @@ HTML_TEMPLATE = """
       .header-title {
           font-size: 3rem;
           font-weight: 600;
+      }
+      .instructions {
+          margin-bottom: 20px;
+          background: #1e1e1e;
+          padding: 15px;
+          border-radius: 10px;
       }
       .container {
           max-width: 600px;
@@ -223,6 +234,15 @@ HTML_TEMPLATE = """
           font-size: 0.9em;
           color: #aaa;
       }
+      /* 3D Preview container styling */
+      #shirt-preview {
+          width: 100%;
+          height: 400px;
+          margin-top: 30px;
+          border-radius: 10px;
+          overflow: hidden;
+          background-color: #000;
+      }
     </style>
   </head>
   <body>
@@ -234,6 +254,11 @@ HTML_TEMPLATE = """
         </div>
     </div>
     <div class="container">
+      <div class="instructions animate__animated animate__fadeInUp">
+          <p><strong>Step 1:</strong> Enter your order details below. Our agents will validate your selections and compute a dynamic price.</p>
+          <p><strong>Step 2:</strong> After submission, a live 3D preview of your shirt will appear below, updated with your chosen color, custom text, design style, and size.</p>
+          <p><em>Note:</em> The order number is generated automatically.</p>
+      </div>
       {% if not result %}
       <div class="card shadow-sm animate__animated animate__fadeInUp">
         <div class="card-body">
@@ -241,7 +266,7 @@ HTML_TEMPLATE = """
           <form method="POST" action="/">
             <div class="mb-3">
               <label for="order_id" class="form-label">Order ID</label>
-              <input type="number" class="form-control" name="order_id" id="order_id" required>
+              <input type="number" class="form-control" name="order_id" id="order_id" value="{{ order.order_id }}" readonly>
             </div>
             <div class="mb-3">
               <label for="customer_name" class="form-label">Customer Name</label>
@@ -295,22 +320,142 @@ HTML_TEMPLATE = """
         </div>
         <a href="/" class="btn btn-secondary w-100 animate__animated animate__fadeInUp">Submit Another Order</a>
       {% endif %}
+      <!-- 3D Shirt Preview Section: Displayed only after a successful submission -->
+      {% if result %}
+      <div id="shirt-preview" class="animate__animated animate__fadeInUp"></div>
+      {% endif %}
     </div>
     <footer>
       <p>&copy; 2025 SuperDad's T-Shirts</p>
     </footer>
-    <!-- Bootstrap Bundle with Popper JS -->
+    <!-- External JS Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      // --- Three.js 3D Shirt Preview Implementation ---
+      // Build a procedural T-shirt model and update it based on order parameters.
+      let scene, camera, renderer, shirtGroup, torso, leftSleeve, rightSleeve, designPlane;
+
+      // Function to return a hexadecimal color value based on the color name.
+      function getColor(colorName) {
+          const colors = {
+              "red": 0xff0000,
+              "blue": 0x0000ff,
+              "green": 0x008000,
+              "black": 0x000000,
+              "white": 0xffffff
+          };
+          return colors[colorName.toLowerCase()] || 0xffffff;
+      }
+
+      // Create a canvas texture for custom text.
+      function createDesignTexture(text) {
+          const canvas = document.createElement('canvas');
+          canvas.width = 256;
+          canvas.height = 128;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "24px Montserrat";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+          return new THREE.CanvasTexture(canvas);
+      }
+
+      // Initialize the shirt model with given parameters.
+      function initShirtModel(orderColor, orderText, orderDesign, orderSize) {
+          // Define the container here so it's always in scope.
+          const container = document.getElementById("shirt-preview");
+
+          // Set scaling factor based on size.
+          const sizeMap = { "S": 0.8, "M": 1.0, "L": 1.2, "XL": 1.4 };
+          const scaleFactor = sizeMap[orderSize.toUpperCase()] || 1.0;
+
+          scene = new THREE.Scene();
+          camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+          renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+          renderer.setSize(container.clientWidth, container.clientHeight);
+          container.innerHTML = "";
+          container.appendChild(renderer.domElement);
+
+          // Lights.
+          const ambientLight = new THREE.AmbientLight(0x404040);
+          scene.add(ambientLight);
+          const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+          directionalLight.position.set(5, 5, 5);
+          scene.add(directionalLight);
+
+          // Create a group for the shirt.
+          shirtGroup = new THREE.Group();
+
+          // Torso: Choose geometry based on design style.
+          let torsoGeometry;
+          if (orderDesign.toLowerCase() === "vintage") {
+              // Vintage style: use a cylinder (curved profile).
+              torsoGeometry = new THREE.CylinderGeometry(1.25 * scaleFactor, 1.25 * scaleFactor, 3 * scaleFactor, 16, 1, true);
+              torsoGeometry.rotateX(Math.PI / 2);
+          } else {
+              // Other styles: use a box geometry.
+              torsoGeometry = new THREE.BoxGeometry(2.5 * scaleFactor, 3 * scaleFactor, 0.5 * scaleFactor);
+          }
+          const torsoMaterial = new THREE.MeshPhongMaterial({ color: getColor(orderColor) });
+          torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+          shirtGroup.add(torso);
+
+          // Sleeves: left & right.
+          const sleeveGeometry = new THREE.BoxGeometry(0.8 * scaleFactor, 1.2 * scaleFactor, 0.5 * scaleFactor);
+          const sleeveMaterial = new THREE.MeshPhongMaterial({ color: getColor(orderColor) });
+          leftSleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
+          rightSleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
+          leftSleeve.position.set(-1.65 * scaleFactor, 0.7 * scaleFactor, 0);
+          rightSleeve.position.set(1.65 * scaleFactor, 0.7 * scaleFactor, 0);
+          shirtGroup.add(leftSleeve);
+          shirtGroup.add(rightSleeve);
+
+          // Design plane for custom text.
+          const designGeometry = new THREE.PlaneGeometry(2 * scaleFactor, 1 * scaleFactor);
+          const designTexture = createDesignTexture(orderText);
+          const designMaterial = new THREE.MeshBasicMaterial({ map: designTexture, transparent: true });
+          designPlane = new THREE.Mesh(designGeometry, designMaterial);
+          designPlane.position.set(0, 0, 0.26 * scaleFactor);
+          shirtGroup.add(designPlane);
+
+          scene.add(shirtGroup);
+          shirtGroup.rotation.y = Math.PI; // Initial rotation.
+          camera.position.z = 7;
+
+          animate();
+      }
+
+      function animate() {
+          requestAnimationFrame(animate);
+          shirtGroup.rotation.y += 0.005;
+          renderer.render(scene, camera);
+      }
+
+      // Only initialize the preview if result data is available.
+      const showPreview = {{ result is not none | tojson }};
+      if (showPreview) {
+          const orderColor = "{{ order.color | default('blue') }}";
+          const orderText = "{{ order.text | default('Your Design') }}";
+          const orderDesign = "{{ order.design | default('Abstract') }}";
+          const orderSize = "{{ order.size | default('M') }}";
+          initShirtModel(orderColor, orderText, orderDesign, orderSize);
+      }
+    </script>
   </body>
 </html>
 """
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global order_count
     if request.method == "POST":
         try:
+            order_count += 1
             order_data = {
-                "order_id": int(request.form["order_id"]),
+                "order_id": order_count,
                 "customer_name": request.form["customer_name"],
                 "size": request.form["size"],
                 "color": request.form["color"],
@@ -322,7 +467,8 @@ def index():
             logging.error(f"Error processing order from UI: {e}")
             result = {"status": "failed", "estimated_cost": 0.0}
         return render_template_string(HTML_TEMPLATE, result=result, order=order_data)
-    return render_template_string(HTML_TEMPLATE, result=None)
+    next_order = order_count + 1
+    return render_template_string(HTML_TEMPLATE, result=None, order={"order_id": next_order})
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
