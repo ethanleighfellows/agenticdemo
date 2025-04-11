@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
-SuperDad's T-Shirts Demo
+SuperDad's T-Shirts Agentic Demo
 Processes custom T-Shirt orders via two agents:
-  - Agent 1 (Customization): Validates your design selections.
-  - Agent 2 (Pricing): Computes a dynamic price.
-Displays a live 3D preview that updates based on your chosen color, text, design style, and size.
-Order IDs are auto-generated.
+  - Agent A (Customization Agent): Creates Customized TShirt Designs.
+  - Agent B (Pricing Agent): Computes a dynamic price.
 """
 
 import asyncio, random, logging
@@ -99,11 +97,11 @@ HTML_TEMPLATE = """
     </div>
     <div class="container">
       <div class="instructions animate__animated animate__fadeInUp">
-        <p><strong>Step 1:</strong> Enter your order details.  Agent1 will create a custom design and Agemnt 2 will compute a dynamic price.</p>
+        <p><strong>Step 1:</strong> Enter your order details.  Agent A will create a custom design and Agent B will compute a dynamic price.</p>
         <p><strong>Step 2:</strong> After submission...</p>
         <ul>
-          <li>Agent 1: Will provide a 3D preview of the customized shirt created by our Agent(updated with your chosen color, text, design style, and size).</li>
-          <li><strong>Agent 2:</strong> Agent 2: Will provide the final price of your customized shirt.</li>
+          <li>Agent A: Will provide a 3D preview of the customized shirt (updated with your chosen color, text, design style, and size).</li>
+          <li><strong>Agent B:</strong> Agent B: Will provide the final price of your customized shirt.</li>
         </ul>
       </div>
       {% if not result %}
