@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """
-LangChain T-Shirt Customization and Dynamic Pricing Service
--------------------------------------------------------------
+LangChain T-Shirt Customization and Dynamic Pricing Service with Web UI
+-------------------------------------------------------------------------
 This service processes T-Shirt orders in two phases:
   1. Customization: Validates and applies customer selections.
   2. Dynamic Pricing: Computes an estimated cost using configurable, dynamic factors.
 
 Features:
+- A modern, responsive web UI inspired by award-winning designs.
+- An HTML form to capture all required order information.
 - Asynchronous processing with randomized delays to simulate real-world dynamics.
 - Detailed debug logging with contextual information.
-- A dynamic text-based progress bar that elegantly reflects each stage.
-- Adapted for LangChain using the new ainvoke() method and updated _call signature.
+- A dynamic progress bar printed to the console during processing.
+- Integrated with LangChain's chain interface.
 """
 
 import asyncio
 import random
 import logging
 from typing import List, Dict, Any, Optional
+
+from flask import Flask, request, render_template_string, redirect, url_for
 from langchain.chains.base import Chain
 
 # Configure logging for detailed output.
@@ -26,6 +30,9 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
+# ----------------------------
+# Utility: Progress Bar Function
+# ----------------------------
 def update_loading_bar(order_id: int, current_step: int, total_steps: int) -> None:
     """
     Display a dynamic text-based loading bar for the order processing.
@@ -36,6 +43,9 @@ def update_loading_bar(order_id: int, current_step: int, total_steps: int) -> No
     bar = '[' + '#' * progress + '-' * (bar_length - progress) + ']'
     print(f"Order {order_id}: {bar} {percent:.0f}% complete")
 
+# ----------------------------
+# LangChain Order Chain
+# ----------------------------
 class TShirtOrderChain(Chain):
     """
     A LangChain chain that processes T-Shirt orders in two sequential steps:
@@ -128,40 +138,128 @@ class TShirtOrderChain(Chain):
         logging.debug(f"Pricing: Final estimated cost for Order {order['order_id']} is ${order['estimated_cost']:.2f}")
         return order
 
+    # Synchronous wrapper; accepts optional run_manager for compatibility.
     def _call(self, inputs: Dict[str, Any], run_manager: Optional[Any] = None) -> Dict[str, Any]:
-        """Synchronous wrapper using asyncio.run; accepts optional run_manager for compatibility."""
         return asyncio.run(self._ainvoke(inputs))
 
-async def main():
-    # Create an instance of the TShirtOrderChain.
-    tshirt_chain = TShirtOrderChain()
+# ----------------------------
+# Flask Web UI Setup
+# ----------------------------
+app = Flask(__name__)
+tshirt_chain = TShirtOrderChain()
 
-    # Define sample orders.
-    orders = [
-        {"order_id": 1, "customer_name": "Alice", "size": "M", "color": "Blue", "design": "Abstract", "text": ""},
-        {"order_id": 2, "customer_name": "Bob",   "size": "XXL", "color": "Red",   "design": "Vintage",  "text": ""},  # Will trigger an error.
-        {"order_id": 3, "customer_name": "Charlie", "size": "L", "color": "green", "design": "Modern", "text": "Experience the best!"}
-    ]
+# HTML template for the order form and results, inspired by modern design aesthetics.
+HTML_TEMPLATE = """
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>T-Shirt Customization</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body { background-color: #f8f9fa; font-family: 'Arial', sans-serif; }
+      .container { max-width: 600px; margin-top: 50px; }
+      .form-control, .btn { border-radius: 0; }
+      .header { text-align: center; margin-bottom: 30px; }
+      footer { text-align: center; margin-top: 50px; font-size: 0.9em; color: #666; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>T-Shirt Customization</h1>
+        <p>Enter your order details below.</p>
+      </div>
+      {% if not result %}
+      <form method="POST" action="/">
+        <div class="mb-3">
+          <label for="order_id" class="form-label">Order ID</label>
+          <input type="number" class="form-control" name="order_id" id="order_id" required>
+        </div>
+        <div class="mb-3">
+          <label for="customer_name" class="form-label">Customer Name</label>
+          <input type="text" class="form-control" name="customer_name" id="customer_name" required>
+        </div>
+        <div class="mb-3">
+          <label for="size" class="form-label">Size</label>
+          <select class="form-select" name="size" id="size" required>
+            <option value="">Choose...</option>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="color" class="form-label">Color</label>
+          <select class="form-select" name="color" id="color" required>
+            <option value="">Choose...</option>
+            <option value="red">Red</option>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="black">Black</option>
+            <option value="white">White</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="design" class="form-label">Design</label>
+          <select class="form-select" name="design" id="design" required>
+            <option value="">Choose...</option>
+            <option value="Abstract">Abstract</option>
+            <option value="Vintage">Vintage</option>
+            <option value="Modern">Modern</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="text" class="form-label">Custom Text (optional)</label>
+          <textarea class="form-control" name="text" id="text" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Submit Order</button>
+      </form>
+      {% else %}
+        <div class="alert alert-{{ 'success' if result.status == 'priced' else 'danger' }}" role="alert">
+          {% if result.status == 'priced' %}
+            Order {{ order.order_id }} for {{ order.customer_name }} is priced at <strong>${{ result.estimated_cost | round(2) }}</strong>.
+          {% else %}
+            Order {{ order.order_id }} encountered an error: <strong>{{ result.status }}</strong>.
+          {% endif %}
+        </div>
+        <a href="/" class="btn btn-secondary w-100">Submit Another Order</a>
+      {% endif %}
+    </div>
+    <footer>
+      <p>&copy; 2025 T-Shirt Customization Service</p>
+    </footer>
+    <!-- Bootstrap JS via CDN (optional) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
+"""
 
-    # Process orders concurrently.
-    tasks = []
-    for order in orders:
-        tasks.append(asyncio.create_task(tshirt_chain.ainvoke(order)))
-    
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    print("\n--- Final Order Statuses and Estimated Costs ---")
-    for order, output in zip(orders, results):
-        # If output is an Exception instance, mark the order as failed.
-        if isinstance(output, Exception):
-            logging.error(f"Error processing Order {order['order_id']}: {output}")
-            print(f"Order {order['order_id']} for {order['customer_name']} - Status: failed")
-        else:
-            if output["status"] == "priced":
-                print(f"Order {order['order_id']} for {order['customer_name']} - Estimated Cost: ${output['estimated_cost']:.2f}")
-            else:
-                print(f"Order {order['order_id']} for {order['customer_name']} - Status: {output['status']}")
-            logging.debug(f"Final Order Data for Order {order['order_id']}: {output}")
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        try:
+            # Collect data from the form fields.
+            order_data = {
+                "order_id": int(request.form["order_id"]),
+                "customer_name": request.form["customer_name"],
+                "size": request.form["size"],
+                "color": request.form["color"],
+                "design": request.form["design"],
+                "text": request.form.get("text", "")
+            }
+            # Run the chain synchronously via _call.
+            # (Alternatively, you can use asyncio.run(tshirt_chain._ainvoke(order_data)))
+            result = tshirt_chain._call(order_data)
+        except Exception as e:
+            logging.error(f"Error processing order from UI: {e}")
+            result = {"status": "failed", "estimated_cost": 0.0}
+        return render_template_string(HTML_TEMPLATE, result=result, order=order_data)
+    # For GET requests, render the form.
+    return render_template_string(HTML_TEMPLATE, result=None)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run(debug=True, port=5000)
