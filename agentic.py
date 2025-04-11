@@ -99,11 +99,10 @@ HTML_TEMPLATE = """
     </div>
     <div class="container">
       <div class="instructions animate__animated animate__fadeInUp">
-        <p><strong>Step 1:</strong> Enter your order details. Our agents validate your design selections and compute a dynamic price.</p>
+        <p><strong>Step 1:</strong> Enter your order details. Our agents create a custom design and compute a dynamic price.</p>
         <p><strong>Step 2:</strong> After submission, you'll see:</p>
         <ul>
-          <li><strong>Agent 1:</strong> An explanation of your design validation.</li>
-          <li>A live 3D preview of your shirt (updated with your chosen color, text, design style, and size).</li>
+          <li>A live 3D preview of the customized shirt created by our Agent(updated with your chosen color, text, design style, and size).</li>
           <li><strong>Agent 2:</strong> An explanation and the final price.</li>
         </ul>
         <p><em>Note:</em> Order IDs are auto-generated.</p>
