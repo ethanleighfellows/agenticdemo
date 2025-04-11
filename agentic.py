@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """
-LangChain T-Shirt Customization and Dynamic Pricing Service with 3D Preview and Auto-Generated Order IDs
------------------------------------------------------------------------------------------------------------
+LangChain T-Shirt Customization and Dynamic Pricing Service with 3D Preview, Auto-Generated Order IDs, and Detailed Agent Explainers
+---------------------------------------------------------------------------------------------------------------
 This demo processes custom T-Shirt orders via two agents:
-  1. Customization – validates and applies your design options.
-  2. Dynamic Pricing – computes a dynamic estimated cost.
+  1. Agent 1 (Customization): Validates your design selections (size, color, design style, custom text).
+  2. Agent 2 (Pricing): Computes a dynamic estimated price based on your selections.
 
-The UI, branded as "SuperDad's T-Shirts," is built in high-contrast night mode with gradient gold accents,
-rounded edges, and semibold Montserrat typography. The hero section displays a new background image.
-After hitting "Submit Order," a live 3D preview appears, updating dynamically based on:
-  - Chosen shirt color.
-  - Custom text to be printed.
-  - Design style (if "Vintage" is selected, a curved profile is simulated).
-  - Shirt size (S, M, L, XL) affecting the model’s scale.
+The UI, branded as "SuperDad's T-Shirts," is built in high‑contrast night mode with gradient gold accents, rounded edges, and semibold Montserrat typography.
+The hero section displays an updated background image.
+After you hit "Submit Order," the final pricing page is split into sections:
+    • An explainer box showing what Agent 1 did.
+    • A live 3D preview of your shirt (which updates dynamically based on your selections).
+    • An explainer box for Agent 2 with the final price.
   
-All 3D elements are built procedurally directly in the browser using Three.js.
+All 3D content is built directly in the browser using Three.js.
 """
 
 import asyncio
@@ -32,7 +31,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
-# Global order counter to auto-generate Order IDs.
+# Global order counter for auto-generated Order IDs.
 order_count = 0
 
 def update_loading_bar(order_id: int, current_step: int, total_steps: int) -> None:
@@ -51,8 +50,8 @@ def update_loading_bar(order_id: int, current_step: int, total_steps: int) -> No
 class TShirtOrderChain(Chain):
     """
     A LangChain chain that processes T-Shirt orders in two sequential steps:
-      1. Customization – validates and applies your design options.
-      2. Pricing – computes a dynamic estimated cost.
+    1. Customization – validates and applies your design options.
+    2. Pricing – computes a dynamic estimated cost.
     """
     @property
     def input_keys(self) -> List[str]:
@@ -71,12 +70,12 @@ class TShirtOrderChain(Chain):
         print(f"\n--- Processing Order {order['order_id']} for {order['customer_name']} ---")
         update_loading_bar(order["order_id"], current_step, total_steps)
 
-        # Customization: Validate and apply design options.
+        # Agent 1: Customization
         order = await self.customize_order(order)
         current_step += 1
         update_loading_bar(order["order_id"], current_step, total_steps)
 
-        # Pricing: Compute estimated cost.
+        # Agent 2: Pricing
         order = await self.price_order(order)
         current_step += 1
         update_loading_bar(order["order_id"], current_step, total_steps)
@@ -149,7 +148,7 @@ class TShirtOrderChain(Chain):
 app = Flask(__name__)
 tshirt_chain = TShirtOrderChain()
 
-# HTML template with updated UI instructions and dynamic 3D preview.
+# HTML template with updated final pricing layout.
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="en">
@@ -256,8 +255,8 @@ HTML_TEMPLATE = """
     <div class="container">
       <div class="instructions animate__animated animate__fadeInUp">
           <p><strong>Step 1:</strong> Enter your order details below. Our agents will validate your selections and compute a dynamic price.</p>
-          <p><strong>Step 2:</strong> After submission, a live 3D preview of your shirt will appear below, updated with your chosen color, custom text, design style, and size.</p>
-          <p><em>Note:</em> The order number is generated automatically.</p>
+          <p><strong>Step 2:</strong> On submission, you'll see what our agents did, a live 3D preview of your shirt, and the final pricing output.</p>
+          <p><em>Note:</em> The Order ID is generated automatically.</p>
       </div>
       {% if not result %}
       <div class="card shadow-sm animate__animated animate__fadeInUp">
@@ -311,18 +310,26 @@ HTML_TEMPLATE = """
         </div>
       </div>
       {% else %}
-        <div class="alert alert-{{ 'success' if result.status == 'priced' else 'danger' }} animate__animated animate__fadeInUp" role="alert">
-          {% if result.status == 'priced' %}
-            Order {{ order.order_id }} for {{ order.customer_name }} is priced at <strong>${{ result.estimated_cost | round(2) }}</strong>.
-          {% else %}
-            Order {{ order.order_id }} encountered an error: <strong>{{ result.status }}</strong>.
-          {% endif %}
+        <!-- Section: What Our Agents Did (Agent 1 Explanation) -->
+        <div class="card shadow-sm animate__animated animate__fadeInUp">
+          <div class="card-body">
+            <h5 class="card-title">What Our Agents Did</h5>
+            <p><strong>Agent 1 (Customization):</strong> Validated your selections – ensuring your chosen size, color, design style, and custom text are acceptable.</p>
+          </div>
         </div>
-        <a href="/" class="btn btn-secondary w-100 animate__animated animate__fadeInUp">Submit Another Order</a>
-      {% endif %}
-      <!-- 3D Shirt Preview Section: Displayed only after a successful submission -->
-      {% if result %}
-      <div id="shirt-preview" class="animate__animated animate__fadeInUp"></div>
+        <!-- Section: 3D Shirt Preview -->
+        <div id="shirt-preview" class="animate__animated animate__fadeInUp mt-3"></div>
+        <!-- Section: Agent 2 Explanation and Final Pricing -->
+        <div class="card shadow-sm animate__animated animate__fadeInUp mt-3">
+          <div class="card-body">
+            <h5 class="card-title">Agent 2 (Pricing) & Final Price</h5>
+            <p>Computed a dynamic price for your order based on your selections. Your shirt's price is calculated by considering the base cost, size multiplier, design cost, and any additional text cost.</p>
+            <div class="alert alert-success" role="alert">
+              Final price for Order {{ order.order_id }}: <strong>${{ result.estimated_cost | round(2) }}</strong>
+            </div>
+          </div>
+        </div>
+        <a href="/" class="btn btn-secondary w-100 animate__animated animate__fadeInUp mt-3">Submit Another Order</a>
       {% endif %}
     </div>
     <footer>
@@ -333,10 +340,9 @@ HTML_TEMPLATE = """
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
       // --- Three.js 3D Shirt Preview Implementation ---
-      // Build a procedural T-shirt model and update it based on order parameters.
+      // Procedurally creates a T-shirt model that updates with the submitted parameters.
       let scene, camera, renderer, shirtGroup, torso, leftSleeve, rightSleeve, designPlane;
 
-      // Function to return a hexadecimal color value based on the color name.
       function getColor(colorName) {
           const colors = {
               "red": 0xff0000,
@@ -348,7 +354,7 @@ HTML_TEMPLATE = """
           return colors[colorName.toLowerCase()] || 0xffffff;
       }
 
-      // Create a canvas texture for custom text.
+      // Generate a canvas-based texture for custom text.
       function createDesignTexture(text) {
           const canvas = document.createElement('canvas');
           canvas.width = 256;
@@ -363,12 +369,9 @@ HTML_TEMPLATE = """
           return new THREE.CanvasTexture(canvas);
       }
 
-      // Initialize the shirt model with given parameters.
+      // Initialize the shirt model.
       function initShirtModel(orderColor, orderText, orderDesign, orderSize) {
-          // Define the container here so it's always in scope.
           const container = document.getElementById("shirt-preview");
-
-          // Set scaling factor based on size.
           const sizeMap = { "S": 0.8, "M": 1.0, "L": 1.2, "XL": 1.4 };
           const scaleFactor = sizeMap[orderSize.toUpperCase()] || 1.0;
 
@@ -379,31 +382,29 @@ HTML_TEMPLATE = """
           container.innerHTML = "";
           container.appendChild(renderer.domElement);
 
-          // Lights.
+          // Lighting.
           const ambientLight = new THREE.AmbientLight(0x404040);
           scene.add(ambientLight);
           const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
           directionalLight.position.set(5, 5, 5);
           scene.add(directionalLight);
 
-          // Create a group for the shirt.
+          // Build shirt group.
           shirtGroup = new THREE.Group();
 
-          // Torso: Choose geometry based on design style.
+          // Create torso based on design style.
           let torsoGeometry;
           if (orderDesign.toLowerCase() === "vintage") {
-              // Vintage style: use a cylinder (curved profile).
               torsoGeometry = new THREE.CylinderGeometry(1.25 * scaleFactor, 1.25 * scaleFactor, 3 * scaleFactor, 16, 1, true);
               torsoGeometry.rotateX(Math.PI / 2);
           } else {
-              // Other styles: use a box geometry.
               torsoGeometry = new THREE.BoxGeometry(2.5 * scaleFactor, 3 * scaleFactor, 0.5 * scaleFactor);
           }
           const torsoMaterial = new THREE.MeshPhongMaterial({ color: getColor(orderColor) });
           torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
           shirtGroup.add(torso);
 
-          // Sleeves: left & right.
+          // Create sleeves.
           const sleeveGeometry = new THREE.BoxGeometry(0.8 * scaleFactor, 1.2 * scaleFactor, 0.5 * scaleFactor);
           const sleeveMaterial = new THREE.MeshPhongMaterial({ color: getColor(orderColor) });
           leftSleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
@@ -413,7 +414,7 @@ HTML_TEMPLATE = """
           shirtGroup.add(leftSleeve);
           shirtGroup.add(rightSleeve);
 
-          // Design plane for custom text.
+          // Add the design plane with custom text.
           const designGeometry = new THREE.PlaneGeometry(2 * scaleFactor, 1 * scaleFactor);
           const designTexture = createDesignTexture(orderText);
           const designMaterial = new THREE.MeshBasicMaterial({ map: designTexture, transparent: true });
@@ -434,7 +435,6 @@ HTML_TEMPLATE = """
           renderer.render(scene, camera);
       }
 
-      // Only initialize the preview if result data is available.
       const showPreview = {{ result is not none | tojson }};
       if (showPreview) {
           const orderColor = "{{ order.color | default('blue') }}";
