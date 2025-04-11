@@ -7,4 +7,8 @@ Agent 1 (Customization): Validates your selections (size, color, design style, a
 Agent 2 (Pricing) Computes a dynamic price based on your selections (base price, size multiplier, design cost, and additional text cost).
 
 
-🐸
+![image](https://github.com/user-attachments/assets/158d57c6-48eb-4591-b9c9-67e19a6e600a)
+
+This basically ^^
+
+🦮 coded
