@@ -99,13 +99,12 @@ HTML_TEMPLATE = """
     </div>
     <div class="container">
       <div class="instructions animate__animated animate__fadeInUp">
-        <p><strong>Step 1:</strong> Enter your order details. Our agents create a custom design and compute a dynamic price.</p>
-        <p><strong>Step 2:</strong> After submission, you'll see:</p>
+        <p><strong>Step 1:</strong> Enter your order details.  Agent1 will create a custom design and Agemnt 2 will compute a dynamic price.</p>
+        <p><strong>Step 2:</strong> After submission...</p>
         <ul>
-          <li>A live 3D preview of the customized shirt created by our Agent(updated with your chosen color, text, design style, and size).</li>
-          <li><strong>Agent 2:</strong> An explanation and the final price.</li>
+          <li>Agent 1: Will provide a 3D preview of the customized shirt created by our Agent(updated with your chosen color, text, design style, and size).</li>
+          <li><strong>Agent 2:</strong> Agent 2: Will provide the final price of your customized shirt.</li>
         </ul>
-        <p><em>Note:</em> Order IDs are auto-generated.</p>
       </div>
       {% if not result %}
       <div class="card animate__animated animate__fadeInUp">
