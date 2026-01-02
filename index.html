@@ -4,25 +4,11 @@
     <meta charset="utf-8" />
     <title>SuperDad's T-Shirts</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <!-- Bootstrap (CDN) -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    /> <!-- Bootstrap CDN is officially documented as supported via jsDelivr. --> 
-    <!-- Animate.css (CDN) -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-    /> <!-- Animate.css CDN usage is documented with this cdnjs URL. -->
-    <!-- Fonts -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" />
     <style>
-      body { font-family:'Montserrat', sans-serif; background:#121212; color:#fff; }
+      body { font-family:'Montserrat', sans-serif; background:#121212; color:#fff; margin:0; padding:0; }
       h1,h2,h3,h4,h5,h6,p,label,.form-label,.card-title,a,span { color:#fff!important; }
       .hero {
         background:url('https://thumbs.dreamstime.com/b/father-son-playing-superhero-sunset-time-people-having-fun-outdoors-concept-friendly-family-97721110.jpg')
@@ -36,11 +22,65 @@
       .instructions, .card { background:#1e1e1e; border:none; border-radius:10px; padding:15px; margin-bottom:20px; }
       .container { max-width:600px; margin-bottom:30px; }
       .form-control, .btn, .form-select { border-radius:10px; font-weight:500; }
-      .btn-primary { background-image:linear-gradient(45deg,#FDB913,#FFB347); border:none; font-weight:600; border-radius:10px; }
-      .btn-primary:hover { background-image:linear-gradient(45deg,#e0a810,#FFA500); }
-      footer { text-align:center; margin-top:50px; font-size:0.9em; color:#aaa; }
-      #shirt-preview { width:100%; height:400px; margin-top:16px; border-radius:10px; overflow:hidden; background:#000; }
+      .form-control:focus, .form-select:focus { 
+        border-color:#FDB913; 
+        box-shadow:0 0 0 0.2rem rgba(253,185,19,0.25); 
+      }
+      .btn-primary { 
+        background-image:linear-gradient(45deg,#FDB913,#FFB347); 
+        border:none; 
+        font-weight:600; 
+        border-radius:10px;
+        transition: all 0.3s ease;
+      }
+      .btn-primary:hover:not(:disabled) { 
+        background-image:linear-gradient(45deg,#e0a810,#FFA500);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(253,185,19,0.4);
+      }
+      .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+      .btn-secondary { border-radius:10px; }
+      footer { text-align:center; margin-top:50px; padding-bottom:30px; font-size:0.9em; color:#aaa; }
+      #shirt-preview { 
+        width:100%; 
+        height:400px; 
+        margin-top:16px; 
+        border-radius:10px; 
+        overflow:hidden; 
+        background:#1a1a1a;
+        display:block !important;
+        position:relative;
+      }
+      #shirt-preview canvas {
+        display:block !important;
+        width:100% !important;
+        height:100% !important;
+      }
       .muted-small { color:#bdbdbd !important; font-size: 0.92rem; }
+      .hidden { display: none !important; }
+      
+      .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.15em;
+      }
+      
+      .fade-in {
+        animation: fadeIn 0.5s ease-in;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .invalid-feedback, .valid-feedback {
+        display: block;
+        margin-top: 0.25rem;
+      }
     </style>
   </head>
 
@@ -55,25 +95,22 @@
 
     <div class="container">
       <div class="instructions animate__animated animate__fadeInUp">
-        <p><strong>Step 1:</strong> Enter your order details. Agent A will create a custom design and Agent B will compute a dynamic price.</p>
-        <p><strong>Step 2:</strong> After submission...</p>
+        <p><strong>Step 1:</strong> Enter your order details below.</p>
+        <p><strong>Step 2:</strong> Our AI agents will work together:</p>
         <ul>
-          <li>Agent A: Validates size/color/design/text and prepares a preview.</li>
-          <li>Agent B: Computes the final price.</li>
+          <li><strong>Agent A:</strong> Validates and customizes your design</li>
+          <li><strong>Agent B:</strong> Calculates dynamic pricing</li>
         </ul>
         <p class="muted-small mb-0">
-          Note: This HTML-only version stores the next Order ID in localStorage and uses the same pricing rules as your Python chain.
+          💡 Tip: Add custom text to see it rendered on your 3D shirt preview!
         </p>
       </div>
 
-      <!-- Alerts -->
       <div id="alert-area"></div>
 
-      <!-- Order Form -->
       <div id="form-card" class="card animate__animated animate__fadeInUp">
         <h4 class="card-title mb-4">Enter Your Order Details</h4>
-
-        <form id="order-form">
+        <form id="order-form" class="needs-validation" novalidate>
           <div class="mb-3">
             <label for="order_id" class="form-label">Order ID</label>
             <input type="number" class="form-control" name="order_id" id="order_id" readonly />
@@ -81,119 +118,143 @@
 
           <div class="mb-3">
             <label for="customer_name" class="form-label">Customer Name</label>
-            <input type="text" class="form-control" name="customer_name" id="customer_name" required />
+            <input 
+              type="text" 
+              class="form-control" 
+              name="customer_name" 
+              id="customer_name" 
+              required 
+              minlength="2"
+              placeholder="Enter your name"
+            />
+            <div class="invalid-feedback">Please enter your name (at least 2 characters).</div>
           </div>
 
           <div class="mb-3">
             <label for="size" class="form-label">Size</label>
             <select class="form-select" name="size" id="size" required>
-              <option value="">Choose...</option>
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
+              <option value="">Choose a size...</option>
+              <option value="S">Small (S)</option>
+              <option value="M">Medium (M)</option>
+              <option value="L">Large (L)</option>
+              <option value="XL">Extra Large (XL) +$2.00</option>
             </select>
+            <div class="invalid-feedback">Please select a size.</div>
           </div>
 
           <div class="mb-3">
             <label for="color" class="form-label">Color</label>
             <select class="form-select" name="color" id="color" required>
-              <option value="">Choose...</option>
-              <option value="red">Red</option>
-              <option value="blue">Blue</option>
-              <option value="green">Green</option>
-              <option value="black">Black</option>
-              <option value="white">White</option>
+              <option value="">Choose a color...</option>
+              <option value="red">🔴 Red</option>
+              <option value="blue">🔵 Blue</option>
+              <option value="green">🟢 Green</option>
+              <option value="black">⚫ Black</option>
+              <option value="white">⚪ White</option>
             </select>
+            <div class="invalid-feedback">Please select a color.</div>
           </div>
 
           <div class="mb-3">
-            <label for="design" class="form-label">Design</label>
+            <label for="design" class="form-label">Design Style</label>
             <select class="form-select" name="design" id="design" required>
-              <option value="">Choose...</option>
-              <option value="Abstract">Abstract</option>
-              <option value="Vintage">Vintage</option>
-              <option value="Modern">Modern</option>
+              <option value="">Choose a style...</option>
+              <option value="Abstract">Abstract ($4-6)</option>
+              <option value="Vintage">Vintage ($6-8) - Special Shape</option>
+              <option value="Modern">Modern ($5-7)</option>
             </select>
+            <div class="invalid-feedback">Please select a design style.</div>
           </div>
 
           <div class="mb-3">
             <label for="text" class="form-label">Custom Text (optional)</label>
-            <textarea class="form-control" name="text" id="text" rows="2"></textarea>
+            <textarea 
+              class="form-control" 
+              name="text" 
+              id="text" 
+              rows="2" 
+              maxlength="50"
+              placeholder="Add custom text (e.g., 'SuperDad', 'Best Dad Ever')"
+            ></textarea>
+            <div class="form-text text-light">$0.05 per character. Max 50 characters.</div>
           </div>
 
-          <button type="submit" class="btn btn-primary w-100">Submit Order</button>
+          <button type="submit" class="btn btn-primary w-100" id="submit-btn">
+            <span id="submit-text">Submit Order</span>
+            <span id="submit-spinner" class="spinner-border spinner-border-sm ms-2 hidden" role="status" aria-hidden="true"></span>
+          </button>
         </form>
       </div>
 
-      <!-- Progress + Results -->
-      <div id="results-area" style="display:none;">
-        <div class="card animate__animated animate__fadeInUp">
+      <div id="results-area" class="hidden">
+        <div class="card fade-in">
           <div class="card-body">
-            <h5 class="card-title">Processing</h5>
-            <div class="progress" role="progressbar" aria-label="Order progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <h5 class="card-title">⚙️ Processing Your Order</h5>
+            <div class="progress" role="progressbar" aria-label="Order progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="height: 25px;">
               <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%;">0%</div>
             </div>
             <p id="progress-text" class="mt-3 mb-0 muted-small">Starting...</p>
           </div>
         </div>
 
-        <!-- Agent A Explanation -->
-        <div class="card animate__animated animate__fadeInUp">
+        <div class="card fade-in">
           <div class="card-body">
-            <h5 class="card-title">What Our Agents Did</h5>
+            <h5 class="card-title">✅ Agent A - Customization Complete</h5>
             <p class="mb-0">
-              <strong>Agent A (Customization):</strong>
-              Validated your selections (size, color, design style, and custom text) to ensure they meet our requirements.
+              Validated your selections (size: <strong><span id="summary-size"></span></strong>, 
+              color: <strong><span id="summary-color"></span></strong>, 
+              design: <strong><span id="summary-design"></span></strong>) 
+              and prepared your custom design.
             </p>
           </div>
         </div>
 
-        <!-- 3D Preview -->
-        <div id="shirt-preview" class="animate__animated animate__fadeInUp"></div>
+        <div id="shirt-preview" class="fade-in"></div>
 
-        <!-- Agent B Explanation and Pricing -->
-        <div class="card animate__animated animate__fadeInUp mt-3">
+        <div class="card fade-in mt-3">
           <div class="card-body">
-            <h5 class="card-title">Agent B (Pricing) & Final Price</h5>
+            <h5 class="card-title">💰 Agent B - Pricing Complete</h5>
             <p class="mb-2">
-              Computed a dynamic price based on base price, size multiplier, design cost, and additional text cost.
+              Computed dynamic price:
             </p>
+            <ul class="muted-small mb-3">
+              <li>Base price: $10.00</li>
+              <li id="size-mult" class="hidden">XL size multiplier: +$2.00</li>
+              <li>Design cost: $<span id="design-cost">0.00</span></li>
+              <li id="text-cost-line" class="hidden">Text cost (<span id="char-count">0</span> chars): $<span id="text-cost">0.00</span></li>
+            </ul>
             <div class="alert alert-success" role="alert">
-              Final price for Order <span id="final-order-id"></span>:
-              <strong>$<span id="final-price"></span></strong>
+              <strong>Order #<span id="final-order-id"></span> Complete!</strong><br>
+              Final Price: <strong style="font-size:1.5em;">$<span id="final-price"></span></strong>
             </div>
           </div>
         </div>
 
-        <button id="new-order" class="btn btn-secondary w-100 animate__animated animate__fadeInUp mt-3">
-          Submit Another Order
+        <button id="new-order" class="btn btn-secondary w-100 fade-in mt-3">
+          🔄 Submit Another Order
         </button>
       </div>
     </div>
 
     <footer>
-      <p>&copy; 2025 SuperDad's T-Shirts</p>
+      <p>&copy; 2026 SuperDad's T-Shirts | Powered by AI Agents</p>
     </footer>
 
-    <!-- Bootstrap JS bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Three.js (CDNJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-      /***********************
-       * Utilities / “Agents”
-       ***********************/
       const ALLOWED_SIZES = new Set(["S","M","L","XL"]);
       const ALLOWED_COLORS = new Set(["red","blue","green","black","white"]);
+      
+      let isProcessing = false;
 
       function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
 
       function showAlert(kind, message) {
         const el = document.getElementById("alert-area");
         el.innerHTML = `
-          <div class="alert alert-${kind} alert-dismissible fade show animate__animated animate__fadeInUp" role="alert">
+          <div class="alert alert-${kind} alert-dismissible fade show animate__animated animate__fadeInDown" role="alert">
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
@@ -209,8 +270,22 @@
         bar.parentElement.setAttribute("aria-valuenow", String(Math.round(val)));
         txt.textContent = text || "";
       }
+      
+      function setButtonLoading(loading) {
+        const btn = document.getElementById("submit-btn");
+        const text = document.getElementById("submit-text");
+        const spinner = document.getElementById("submit-spinner");
+        
+        btn.disabled = loading;
+        if (loading) {
+          text.textContent = "Processing...";
+          spinner.classList.remove("hidden");
+        } else {
+          text.textContent = "Submit Order";
+          spinner.classList.add("hidden");
+        }
+      }
 
-      // Agent A: validation + simulated customization delay
       async function agentA_customize(order) {
         if (!ALLOWED_SIZES.has(order.size.toUpperCase())) {
           throw new Error("Invalid size. Options: S, M, L, XL.");
@@ -218,13 +293,11 @@
         if (!ALLOWED_COLORS.has(order.color.toLowerCase())) {
           throw new Error("Invalid color. Options: red, blue, green, black, white.");
         }
-        // Simulate async work (0.5–1.0s)
         await sleep(500 + Math.random() * 500);
         order.status = "customized";
         return order;
       }
 
-      // Agent B: pricing + simulated delay
       async function agentB_price(order) {
         const base = 10.0;
         let mult = 1.0;
@@ -244,47 +317,56 @@
         const textCost = trimmed ? 0.05 * trimmed.length : 0.0;
 
         order.estimated_cost = (base * mult) + designCost + textCost;
-
-        // Simulate async work (0.3–0.7s)
+        order.breakdown = {
+          base: base * mult,
+          design: designCost,
+          text: textCost,
+          charCount: trimmed.length
+        };
+        
         await sleep(300 + Math.random() * 400);
-
         order.status = "priced";
         return order;
       }
 
-      /***********************
-       * Order ID (localStorage)
-       ***********************/
       function getNextOrderId() {
         const key = "superdad_order_count";
         const cur = parseInt(localStorage.getItem(key) || "0", 10);
         return cur + 1;
       }
+
       function commitOrderIdUsed(orderId) {
         const key = "superdad_order_count";
         localStorage.setItem(key, String(orderId));
       }
 
-      /***********************
-       * Three.js Preview (same idea as your template, but fed by JS variables)
-       ***********************/
-      let scene, camera, renderer, shirtGroup, torso, leftSleeve, rightSleeve, designPlane;
+      let scene, camera, renderer, shirtGroup, animationId;
 
       function getColor(name) {
-        const colors = { red:0xff0000, blue:0x0000ff, green:0x008000, black:0x000000, white:0xffffff };
-        return colors[(name || "").toLowerCase()] ?? 0xffffff;
+        const colors = { 
+          red: 0xff0000, 
+          blue: 0x0000ff, 
+          green: 0x00ff00, 
+          black: 0x222222, 
+          white: 0xffffff 
+        };
+        return colors[(name || "").toLowerCase()] || 0xffffff;
       }
 
       function createDesignTexture(txt) {
         const canvas = document.createElement("canvas");
-        canvas.width = 256; canvas.height = 128;
+        canvas.width = 512;
+        canvas.height = 256;
         const ctx = canvas.getContext("2d");
-        ctx.clearRect(0,0,256,128);
-        ctx.fillStyle = "#fff";
-        ctx.font = "24px Montserrat";
+        
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 40px Montserrat, Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText((txt || "Your Design").slice(0, 18), 128, 64);
+        
+        const displayText = (txt || "SuperDad").slice(0, 20);
+        ctx.fillText(displayText, 256, 128);
+        
         return new THREE.CanvasTexture(canvas);
       }
 
@@ -299,86 +381,123 @@
         shape.lineTo(3.0*scale, 1.5*scale);
         shape.lineTo(2.5*scale, 1.5*scale);
         shape.quadraticCurveTo(0, 2.2*scale, -2.5*scale, 1.5*scale);
-        shape.closePath();
         return shape;
       }
 
       function initShirtModel(color, text, design, size) {
         const container = document.getElementById("shirt-preview");
+        if (!container) return;
+
+        container.innerHTML = "";
+        
+        if (renderer) {
+          cancelAnimationFrame(animationId);
+          renderer.dispose();
+          renderer = null;
+        }
+
         const sizeMap = { S:0.8, M:1.0, L:1.2, XL:1.4 };
         const scale = sizeMap[(size || "M").toUpperCase()] || 1.0;
 
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, 0.1, 1000);
+        const width = container.clientWidth;
+        const height = container.clientHeight;
 
-        renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        container.innerHTML = "";
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+        
+        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 0, 8);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0x404040));
-        const dLight = new THREE.DirectionalLight(0xffffff, 1);
-        dLight.position.set(5,5,5);
-        scene.add(dLight);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
 
         shirtGroup = new THREE.Group();
 
-        if ((design || "").toLowerCase() === "vintage") {
+        const designLower = (design || "").toLowerCase();
+        const shirtColor = getColor(color);
+
+        if (designLower === "vintage") {
           const tshirtShape = createVintageShape(scale);
-          const extrudeSettings = { depth: 0.3*scale, bevelEnabled:false, steps:1, curveSegments:32 };
+          const extrudeSettings = { 
+            depth: 0.3 * scale, 
+            bevelEnabled: false, 
+            steps: 1, 
+            curveSegments: 32 
+          };
           const geometry = new THREE.ExtrudeGeometry(tshirtShape, extrudeSettings);
-          torso = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: getColor(color) }));
+          const material = new THREE.MeshPhongMaterial({ color: shirtColor });
+          const torso = new THREE.Mesh(geometry, material);
+          shirtGroup.add(torso);
         } else {
-          torso = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5*scale, 3*scale, 0.5*scale),
-            new THREE.MeshPhongMaterial({ color: getColor(color) })
-          );
-        }
+          const torsoGeometry = new THREE.BoxGeometry(2.5 * scale, 3 * scale, 0.5 * scale);
+          const torsoMaterial = new THREE.MeshPhongMaterial({ color: shirtColor });
+          const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+          shirtGroup.add(torso);
 
-        shirtGroup.add(torso);
-
-        if ((design || "").toLowerCase() !== "vintage") {
-          const sleeveGeom = new THREE.BoxGeometry(0.8*scale, 1.2*scale, 0.5*scale);
-          const sleeveMat = new THREE.MeshPhongMaterial({ color: getColor(color) });
-          leftSleeve = new THREE.Mesh(sleeveGeom, sleeveMat);
-          rightSleeve = new THREE.Mesh(sleeveGeom, sleeveMat);
-          leftSleeve.position.set(-1.65*scale, 0.7*scale, 0);
-          rightSleeve.position.set( 1.65*scale, 0.7*scale, 0);
+          const sleeveGeometry = new THREE.BoxGeometry(0.8 * scale, 1.2 * scale, 0.5 * scale);
+          const sleeveMaterial = new THREE.MeshPhongMaterial({ color: shirtColor });
+          
+          const leftSleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
+          leftSleeve.position.set(-1.65 * scale, 0.7 * scale, 0);
           shirtGroup.add(leftSleeve);
+
+          const rightSleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
+          rightSleeve.position.set(1.65 * scale, 0.7 * scale, 0);
           shirtGroup.add(rightSleeve);
         }
 
-        const designGeom = new THREE.PlaneGeometry(2*scale, 1*scale);
-        const designTex = createDesignTexture(text);
-        designPlane = new THREE.Mesh(
-          designGeom,
-          new THREE.MeshBasicMaterial({ map: designTex, transparent:true })
-        );
-        designPlane.position.set(0, 0, 0.26*scale);
-        shirtGroup.add(designPlane);
+        if (text && text.trim()) {
+          const designGeometry = new THREE.PlaneGeometry(2.2 * scale, 1 * scale);
+          const designTexture = createDesignTexture(text);
+          const designMaterial = new THREE.MeshBasicMaterial({ 
+            map: designTexture, 
+            transparent: true,
+            side: THREE.DoubleSide
+          });
+          const designPlane = new THREE.Mesh(designGeometry, designMaterial);
+          designPlane.position.set(0, 0, 0.26 * scale);
+          shirtGroup.add(designPlane);
+        }
 
         scene.add(shirtGroup);
         shirtGroup.rotation.y = Math.PI;
-        camera.position.z = 7;
 
         function animate() {
-          requestAnimationFrame(animate);
-          if (shirtGroup) shirtGroup.rotation.y += 0.005;
+          animationId = requestAnimationFrame(animate);
+          if (shirtGroup) {
+            shirtGroup.rotation.y += 0.005;
+          }
           renderer.render(scene, camera);
         }
+        
         animate();
       }
 
-      /***********************
-       * App wiring
-       ***********************/
       function resetToForm() {
-        document.getElementById("results-area").style.display = "none";
-        document.getElementById("form-card").style.display = "block";
+        isProcessing = false;
+        document.getElementById("results-area").classList.add("hidden");
+        document.getElementById("form-card").classList.remove("hidden");
         document.getElementById("alert-area").innerHTML = "";
+        document.getElementById("order-form").classList.remove("was-validated");
         setProgress(0, "Starting...");
         setInitialOrderId();
+        setButtonLoading(false);
         document.getElementById("order-form").reset();
+        
+        if (renderer) {
+          cancelAnimationFrame(animationId);
+          renderer.dispose();
+          renderer = null;
+        }
       }
 
       function setInitialOrderId() {
@@ -386,22 +505,44 @@
       }
 
       async function processOrder(order) {
-        // Two-step “loading bar”, like your Python chain steps=2
-        setProgress(0, `Commencing Order ${order.order_id}...`);
-        await sleep(150);
+        setProgress(0, `🚀 Commencing Order ${order.order_id}...`);
+        await sleep(200);
 
-        setProgress(5, "Agent A: Validating and customizing...");
+        setProgress(10, "🎨 Agent A: Validating selections...");
+        await sleep(300);
+        
+        setProgress(25, "🎨 Agent A: Customizing design...");
         await agentA_customize(order);
-        setProgress(50, "Agent A complete. Agent B: Pricing...");
-
+        
+        setProgress(60, "✅ Agent A complete. 💰 Agent B: Calculating pricing...");
         await agentB_price(order);
-        setProgress(100, "Done.");
+        
+        setProgress(100, "✨ Complete! Rendering your shirt...");
+        await sleep(300);
 
         return order;
       }
 
-      document.getElementById("order-form").addEventListener("submit", async (e) => {
+      // Bootstrap form validation
+      const form = document.getElementById("order-form");
+      
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        
+        // Prevent double submission
+        if (isProcessing) {
+          return;
+        }
+        
+        // Check validation
+        if (!form.checkValidity()) {
+          form.classList.add("was-validated");
+          return;
+        }
+        
+        isProcessing = true;
+        setButtonLoading(true);
         document.getElementById("alert-area").innerHTML = "";
 
         const orderId = parseInt(document.getElementById("order_id").value, 10);
@@ -414,37 +555,60 @@
           text: document.getElementById("text").value || ""
         };
 
-        // Switch UI to results/progress
-        document.getElementById("form-card").style.display = "none";
-        document.getElementById("results-area").style.display = "block";
+        document.getElementById("form-card").classList.add("hidden");
+        document.getElementById("results-area").classList.remove("hidden");
+        
         setProgress(0, "Starting...");
 
         try {
           const finalOrder = await processOrder(order);
           commitOrderIdUsed(finalOrder.order_id);
 
+          // Update summary
+          document.getElementById("summary-size").textContent = finalOrder.size;
+          document.getElementById("summary-color").textContent = finalOrder.color;
+          document.getElementById("summary-design").textContent = finalOrder.design;
+          
+          // Update pricing breakdown
           document.getElementById("final-order-id").textContent = String(finalOrder.order_id);
           document.getElementById("final-price").textContent = Number(finalOrder.estimated_cost).toFixed(2);
+          document.getElementById("design-cost").textContent = finalOrder.breakdown.design.toFixed(2);
+          
+          if (finalOrder.size.toUpperCase() === "XL") {
+            document.getElementById("size-mult").classList.remove("hidden");
+          }
+          
+          if (finalOrder.breakdown.charCount > 0) {
+            document.getElementById("text-cost-line").classList.remove("hidden");
+            document.getElementById("char-count").textContent = finalOrder.breakdown.charCount;
+            document.getElementById("text-cost").textContent = finalOrder.breakdown.text.toFixed(2);
+          }
 
-          // Render preview using submitted params
+          await sleep(100);
           initShirtModel(finalOrder.color, finalOrder.text, finalOrder.design, finalOrder.size);
         } catch (err) {
-          showAlert("danger", `Error processing order: ${err.message || err}`);
-          // Go back to form and do not commit order id
+          console.error("Error:", err);
+          showAlert("danger", `❌ Error processing order: ${err.message || err}`);
+          await sleep(3000);
           resetToForm();
         }
       });
 
-      document.getElementById("new-order").addEventListener("click", () => resetToForm());
+      document.getElementById("new-order").addEventListener("click", () => {
+        resetToForm();
+      });
 
-      // Init
       setInitialOrderId();
+
       window.addEventListener("resize", () => {
-        // Basic resize handling for the 3D canvas if it's present
         const container = document.getElementById("shirt-preview");
         if (!renderer || !camera || !container || container.clientWidth === 0) return;
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        camera.aspect = container.clientWidth / container.clientHeight;
+        
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        renderer.setSize(width, height);
+        camera.aspect = width / height;
         camera.updateProjectionMatrix();
       });
     </script>
