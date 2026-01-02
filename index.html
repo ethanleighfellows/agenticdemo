@@ -166,4 +166,287 @@
           </div>
         </div>
 
-        <button id="new-order" class="btn btn-secondary w-100 animate__animated animate__fadeInU
+        <button id="new-order" class="btn btn-secondary w-100 animate__animated animate__fadeInUp mt-3">
+          Submit Another Order
+        </button>
+      </div>
+    </div>
+
+    <footer>
+      <p>&copy; 2025 SuperDad's T-Shirts</p>
+    </footer>
+
+    <!-- Bootstrap JS bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Three.js (CDNJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+      /***********************
+       * Utilities / “Agents”
+       ***********************/
+      const ALLOWED_SIZES = new Set(["S","M","L","XL"]);
+      const ALLOWED_COLORS = new Set(["red","blue","green","black","white"]);
+
+      function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+      function showAlert(kind, message) {
+        const el = document.getElementById("alert-area");
+        el.innerHTML = `
+          <div class="alert alert-${kind} alert-dismissible fade show animate__animated animate__fadeInUp" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+      }
+
+      function setProgress(pct, text) {
+        const bar = document.getElementById("progress-bar");
+        const txt = document.getElementById("progress-text");
+        const val = Math.max(0, Math.min(100, pct));
+        bar.style.width = val + "%";
+        bar.textContent = `${Math.round(val)}%`;
+        bar.parentElement.setAttribute("aria-valuenow", String(Math.round(val)));
+        txt.textContent = text || "";
+      }
+
+      // Agent A: validation + simulated customization delay
+      async function agentA_customize(order) {
+        if (!ALLOWED_SIZES.has(order.size.toUpperCase())) {
+          throw new Error("Invalid size. Options: S, M, L, XL.");
+        }
+        if (!ALLOWED_COLORS.has(order.color.toLowerCase())) {
+          throw new Error("Invalid color. Options: red, blue, green, black, white.");
+        }
+        // Simulate async work (0.5–1.0s)
+        await sleep(500 + Math.random() * 500);
+        order.status = "customized";
+        return order;
+      }
+
+      // Agent B: pricing + simulated delay
+      async function agentB_price(order) {
+        const base = 10.0;
+        let mult = 1.0;
+        if (order.size.toUpperCase() === "XL") mult = 1.2;
+
+        const costRanges = {
+          abstract: [4.0, 6.0],
+          vintage:  [6.0, 8.0],
+          modern:   [5.0, 7.0]
+        };
+
+        const d = (order.design || "").toLowerCase();
+        const range = costRanges[d];
+        const designCost = range ? (range[0] + Math.random() * (range[1] - range[0])) : 4.0;
+
+        const trimmed = (order.text || "").trim();
+        const textCost = trimmed ? 0.05 * trimmed.length : 0.0;
+
+        order.estimated_cost = (base * mult) + designCost + textCost;
+
+        // Simulate async work (0.3–0.7s)
+        await sleep(300 + Math.random() * 400);
+
+        order.status = "priced";
+        return order;
+      }
+
+      /***********************
+       * Order ID (localStorage)
+       ***********************/
+      function getNextOrderId() {
+        const key = "superdad_order_count";
+        const cur = parseInt(localStorage.getItem(key) || "0", 10);
+        return cur + 1;
+      }
+      function commitOrderIdUsed(orderId) {
+        const key = "superdad_order_count";
+        localStorage.setItem(key, String(orderId));
+      }
+
+      /***********************
+       * Three.js Preview (same idea as your template, but fed by JS variables)
+       ***********************/
+      let scene, camera, renderer, shirtGroup, torso, leftSleeve, rightSleeve, designPlane;
+
+      function getColor(name) {
+        const colors = { red:0xff0000, blue:0x0000ff, green:0x008000, black:0x000000, white:0xffffff };
+        return colors[(name || "").toLowerCase()] ?? 0xffffff;
+      }
+
+      function createDesignTexture(txt) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256; canvas.height = 128;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0,0,256,128);
+        ctx.fillStyle = "#fff";
+        ctx.font = "24px Montserrat";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((txt || "Your Design").slice(0, 18), 128, 64);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function createVintageShape(scale) {
+        const shape = new THREE.Shape();
+        shape.moveTo(-2.5*scale, 1.5*scale);
+        shape.lineTo(-3.0*scale, 1.5*scale);
+        shape.lineTo(-3.3*scale, 0.7*scale);
+        shape.lineTo(-3.3*scale, -1.5*scale);
+        shape.lineTo(3.3*scale, -1.5*scale);
+        shape.lineTo(3.3*scale, 0.7*scale);
+        shape.lineTo(3.0*scale, 1.5*scale);
+        shape.lineTo(2.5*scale, 1.5*scale);
+        shape.quadraticCurveTo(0, 2.2*scale, -2.5*scale, 1.5*scale);
+        shape.closePath();
+        return shape;
+      }
+
+      function initShirtModel(color, text, design, size) {
+        const container = document.getElementById("shirt-preview");
+        const sizeMap = { S:0.8, M:1.0, L:1.2, XL:1.4 };
+        const scale = sizeMap[(size || "M").toUpperCase()] || 1.0;
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, 0.1, 1000);
+
+        renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.innerHTML = "";
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0x404040));
+        const dLight = new THREE.DirectionalLight(0xffffff, 1);
+        dLight.position.set(5,5,5);
+        scene.add(dLight);
+
+        shirtGroup = new THREE.Group();
+
+        if ((design || "").toLowerCase() === "vintage") {
+          const tshirtShape = createVintageShape(scale);
+          const extrudeSettings = { depth: 0.3*scale, bevelEnabled:false, steps:1, curveSegments:32 };
+          const geometry = new THREE.ExtrudeGeometry(tshirtShape, extrudeSettings);
+          torso = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: getColor(color) }));
+        } else {
+          torso = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5*scale, 3*scale, 0.5*scale),
+            new THREE.MeshPhongMaterial({ color: getColor(color) })
+          );
+        }
+
+        shirtGroup.add(torso);
+
+        if ((design || "").toLowerCase() !== "vintage") {
+          const sleeveGeom = new THREE.BoxGeometry(0.8*scale, 1.2*scale, 0.5*scale);
+          const sleeveMat = new THREE.MeshPhongMaterial({ color: getColor(color) });
+          leftSleeve = new THREE.Mesh(sleeveGeom, sleeveMat);
+          rightSleeve = new THREE.Mesh(sleeveGeom, sleeveMat);
+          leftSleeve.position.set(-1.65*scale, 0.7*scale, 0);
+          rightSleeve.position.set( 1.65*scale, 0.7*scale, 0);
+          shirtGroup.add(leftSleeve);
+          shirtGroup.add(rightSleeve);
+        }
+
+        const designGeom = new THREE.PlaneGeometry(2*scale, 1*scale);
+        const designTex = createDesignTexture(text);
+        designPlane = new THREE.Mesh(
+          designGeom,
+          new THREE.MeshBasicMaterial({ map: designTex, transparent:true })
+        );
+        designPlane.position.set(0, 0, 0.26*scale);
+        shirtGroup.add(designPlane);
+
+        scene.add(shirtGroup);
+        shirtGroup.rotation.y = Math.PI;
+        camera.position.z = 7;
+
+        function animate() {
+          requestAnimationFrame(animate);
+          if (shirtGroup) shirtGroup.rotation.y += 0.005;
+          renderer.render(scene, camera);
+        }
+        animate();
+      }
+
+      /***********************
+       * App wiring
+       ***********************/
+      function resetToForm() {
+        document.getElementById("results-area").style.display = "none";
+        document.getElementById("form-card").style.display = "block";
+        document.getElementById("alert-area").innerHTML = "";
+        setProgress(0, "Starting...");
+        setInitialOrderId();
+        document.getElementById("order-form").reset();
+      }
+
+      function setInitialOrderId() {
+        document.getElementById("order_id").value = getNextOrderId();
+      }
+
+      async function processOrder(order) {
+        // Two-step “loading bar”, like your Python chain steps=2
+        setProgress(0, `Commencing Order ${order.order_id}...`);
+        await sleep(150);
+
+        setProgress(5, "Agent A: Validating and customizing...");
+        await agentA_customize(order);
+        setProgress(50, "Agent A complete. Agent B: Pricing...");
+
+        await agentB_price(order);
+        setProgress(100, "Done.");
+
+        return order;
+      }
+
+      document.getElementById("order-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        document.getElementById("alert-area").innerHTML = "";
+
+        const orderId = parseInt(document.getElementById("order_id").value, 10);
+        const order = {
+          order_id: orderId,
+          customer_name: document.getElementById("customer_name").value,
+          size: document.getElementById("size").value,
+          color: document.getElementById("color").value,
+          design: document.getElementById("design").value,
+          text: document.getElementById("text").value || ""
+        };
+
+        // Switch UI to results/progress
+        document.getElementById("form-card").style.display = "none";
+        document.getElementById("results-area").style.display = "block";
+        setProgress(0, "Starting...");
+
+        try {
+          const finalOrder = await processOrder(order);
+          commitOrderIdUsed(finalOrder.order_id);
+
+          document.getElementById("final-order-id").textContent = String(finalOrder.order_id);
+          document.getElementById("final-price").textContent = Number(finalOrder.estimated_cost).toFixed(2);
+
+          // Render preview using submitted params
+          initShirtModel(finalOrder.color, finalOrder.text, finalOrder.design, finalOrder.size);
+        } catch (err) {
+          showAlert("danger", `Error processing order: ${err.message || err}`);
+          // Go back to form and do not commit order id
+          resetToForm();
+        }
+      });
+
+      document.getElementById("new-order").addEventListener("click", () => resetToForm());
+
+      // Init
+      setInitialOrderId();
+      window.addEventListener("resize", () => {
+        // Basic resize handling for the 3D canvas if it's present
+        const container = document.getElementById("shirt-preview");
+        if (!renderer || !camera || !container || container.clientWidth === 0) return;
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+      });
+    </script>
+  </body>
+</html>
